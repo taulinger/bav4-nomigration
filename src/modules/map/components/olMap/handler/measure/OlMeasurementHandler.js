@@ -11,6 +11,7 @@ import { measureStyleFunction, generateSketchStyleFunction } from './StyleUtils'
 import { getPartitionDelta } from './GeometryUtils';
 import { MeasurementOverlay } from './MeasurementOverlay';
 import { MEASUREMENT_LAYER_ID } from '../../../../store/measurement.observer';
+import { observe } from '../../../../../../utils/storeUtils';
 
 if (!window.customElements.get(MeasurementOverlay.tag)) {
 	window.customElements.define(MeasurementOverlay.tag, MeasurementOverlay);
@@ -26,14 +27,15 @@ export class OlMeasurementHandler extends OlLayerHandler {
 	//this handler could be statefull
 	constructor() {
 		super(MEASUREMENT_LAYER_ID);
-		const { TranslationService, MapService, EnvironmentService } = $injector.inject('TranslationService', 'MapService', 'EnvironmentService');
+		const { TranslationService, MapService, EnvironmentService, StoreService } = $injector.inject('TranslationService', 'MapService', 'EnvironmentService', 'StoreService');
 		this._translationService = TranslationService;
 		this._mapService = MapService;
 		this._environmentService = EnvironmentService;
+		this._storeService = StoreService;
 		this._vectorLayer = null;
 		this._draw = false;
 		this._activeSketch = null;
-		this._helpTooltip;
+		this._helpTooltip = null;
 		this._isFinishOnFirstPoint = false;
 		this._isSnapOnLastPoint = false;
 		this._pointCount = 0;
@@ -46,16 +48,34 @@ export class OlMeasurementHandler extends OlLayerHandler {
 	 * @override
 	 */
 	activate(olMap) {
-		const visibleChangedHandler = (event) => {
-			const layer = event.target;
-			const isVisibleStyle = layer.getVisible() ? '' : 'none';
-			this._overlays.forEach(o => o.getElement().style.display = isVisibleStyle);
+		const extract = (state) => {
+			return state.layers;
+
+		};
+		const onChange = (changedState) => {
+			const measurementLayers = changedState.active.filter(l => l.id === MEASUREMENT_LAYER_ID)[0];
+			if (measurementLayers.length > 0) {
+				const measurementLayer = measurementLayers[0];
+				this._overlays.forEach(o => {
+					o.getElement().style.display = measurementLayer.visible ? '' : 'none';
+					o.getElement().style.opacity = measurementLayer.opacity;
+				});
+			}
+
 		};
 
-		const opacityChangedHandler = (event) => {
-			const layer = event.target;
-			this._overlays.forEach(o => o.getElement().style.opacity = layer.getOpacity());
-		};
+		this._unsubscribeFromStore = observe(this._storeService.getStore(), extract, onChange);
+
+		// const visibleChangedHandler = (event) => {
+		// 	const layer = event.target;
+		// 	const isVisibleStyle = layer.getVisible() ? '' : 'none';
+		// 	this._overlays.forEach(o => o.getElement().style.display = isVisibleStyle);
+		// };
+
+		// const opacityChangedHandler = (event) => {
+		// 	const layer = event.target;
+		// 	this._overlays.forEach(o => o.getElement().style.opacity = layer.getOpacity());
+		// };
 
 		const prepareInteraction = () => {
 			const source = new VectorSource({ wrapX: false });
@@ -63,8 +83,8 @@ export class OlMeasurementHandler extends OlLayerHandler {
 				source: source,
 				style: measureStyleFunction
 			});
-			this._layerVisibilityListener = layer.on('change:visible', visibleChangedHandler);
-			this._layerOpacityListener = layer.on('change:opacity', opacityChangedHandler);
+			// this._layerVisibilityListener = layer.on('change:visible', visibleChangedHandler);
+			// this._layerOpacityListener = layer.on('change:opacity', opacityChangedHandler);
 			return layer;
 		};
 
@@ -133,8 +153,12 @@ export class OlMeasurementHandler extends OlLayerHandler {
 		this._overlays = [];
 		unByKey(this._pointerMoveListener);
 		unByKey(this._keyboardListener);
-		unByKey(this._layerVisibilityListener);
-		unByKey(this._layerOpacityListener);
+		// unByKey(this._layerVisibilityListener);
+		// unByKey(this._layerOpacityListener);
+		if (this._unsubscribeFromStore) {
+			this._unsubscribeFromStore();
+		}
+
 		this._helpTooltip = null;
 		this._draw = false;
 	}

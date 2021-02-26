@@ -14,14 +14,22 @@ import { TestUtils } from '../../../../../../test-utils.js';
 import proj4 from 'proj4';
 import { register } from 'ol/proj/proj4';
 import { MEASUREMENT_LAYER_ID } from '../../../../../../../src/modules/map/store/measurement.observer';
+import { layersReducer, defaultLayerProperties } from '../../../../../../../src/modules/map/store/layers.reducer';
+import { modifyLayer } from '../../../../../../../src/modules/map/store/layers.action';
 
 
 const environmentServiceMock = { isTouch: () => false };
+let store;
+const setup = async (state = {}) => {
 
-TestUtils.setupStoreAndDi({},);
-$injector.registerSingleton('TranslationService', { translate: (key) => key });
-$injector.registerSingleton('MapService', { getSrid: () => 3857, getDefaultGeodeticSrid: () => 25832 });
-$injector.registerSingleton('EnvironmentService', environmentServiceMock);
+	store = TestUtils.setupStoreAndDi(state, { layers: layersReducer });
+	$injector.registerSingleton('TranslationService', { translate: (key) => key });
+	$injector.registerSingleton('MapService', { getSrid: () => 3857, getDefaultGeodeticSrid: () => 25832 });
+	$injector.registerSingleton('EnvironmentService', environmentServiceMock);
+
+	return store;
+};
+
 
 proj4.defs('EPSG:25832', '+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +axis=neu');
 register(proj4);
@@ -29,7 +37,7 @@ register(proj4);
 
 
 describe('OlMeasurementHandler', () => {
-
+	setup();
 	it('has two methods', () => {
 		const handler = new OlMeasurementHandler();
 		expect(handler).toBeTruthy();
@@ -52,6 +60,7 @@ describe('OlMeasurementHandler', () => {
 	};
 
 	describe('when activated over olMap', () => {
+		setup();
 		const classUnderTest = new OlMeasurementHandler();
 		const initialCenter = fromLonLat([11.57245, 48.14021]);
 
@@ -107,7 +116,7 @@ describe('OlMeasurementHandler', () => {
 	});
 
 	describe('when using EnvironmentService for snapTolerance', () => {
-
+		setup();
 		it('isTouch() resolves in higher snapTolerance', () => {
 			const classUnderTest = new OlMeasurementHandler();
 			const environmentSpy = spyOn(environmentServiceMock, 'isTouch').and.returnValue(true);
@@ -127,6 +136,7 @@ describe('OlMeasurementHandler', () => {
 	});
 
 	describe('when draw a line', () => {
+		setup();
 		const initialCenter = fromLonLat([11.57245, 48.14021]);
 
 		const setupMap = () => {
@@ -335,6 +345,7 @@ describe('OlMeasurementHandler', () => {
 	});
 
 	describe('when pointer move', () => {
+		setup();
 		const initialCenter = fromLonLat([11.57245, 48.14021]);
 
 		const setupMap = () => {
@@ -459,6 +470,17 @@ describe('OlMeasurementHandler', () => {
 	});
 
 	describe('when measurement-layer changes', () => {
+		const layer = {
+			...defaultLayerProperties,
+			id: MEASUREMENT_LAYER_ID, label: 'label0', visible: true, zIndex: 0
+		};
+		const state = {
+			layers: {
+				active: [layer],
+				background: 'bg0'
+			}
+		};
+		store = setup(state);
 		const initialCenter = fromLonLat([11.57245, 48.14021]);
 
 		const setupMap = () => {
@@ -501,13 +523,14 @@ describe('OlMeasurementHandler', () => {
 			expect(overlayElement).toBeTruthy();
 
 			// layers visibility changed
-			measurementLayer.setVisible(false);
+			// measurementLayer.setVisible(false);
+			modifyLayer(MEASUREMENT_LAYER_ID, { visible: false });
 
 			expect(overlayElement.style.display).toBeDefined();
 			expect(overlayElement.style.display).toBe('none');
 
 
-			measurementLayer.setVisible(true);
+			modifyLayer(MEASUREMENT_LAYER_ID, { visible: true });
 			expect(overlayElement.style.display).toBe('');
 		});
 
@@ -518,7 +541,7 @@ describe('OlMeasurementHandler', () => {
 			const map = setupMap();
 
 			// create a measurement with overlays
-			const measurementLayer = classUnderTest.activate(map);
+			classUnderTest.activate(map);
 			simulateDrawEvent('drawstart', classUnderTest._draw, feature);
 			feature.getGeometry().dispatchEvent('change');
 			geometry.setCoordinates([[[0, 0], [500, 0], [550, 550], [0, 500], [0, 0], [0, 0]]]);
@@ -532,7 +555,8 @@ describe('OlMeasurementHandler', () => {
 			expect(overlayElement).toBeTruthy();
 
 			// layers opacity changed
-			measurementLayer.setOpacity(0.3);
+			// measurementLayer.setOpacity(0.3);
+			modifyLayer(MEASUREMENT_LAYER_ID, { opacity: 0.3 });
 
 			expect(overlayElement.style.opacity).toBeDefined();
 			expect(overlayElement.style.opacity).toBe('0.3');
