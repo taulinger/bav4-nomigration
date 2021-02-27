@@ -15,7 +15,7 @@ import proj4 from 'proj4';
 import { register } from 'ol/proj/proj4';
 import { MEASUREMENT_LAYER_ID } from '../../../../../../../src/modules/map/store/measurement.observer';
 import { layersReducer, defaultLayerProperties } from '../../../../../../../src/modules/map/store/layers.reducer';
-import { modifyLayer } from '../../../../../../../src/modules/map/store/layers.action';
+import { addLayer, modifyLayer } from '../../../../../../../src/modules/map/store/layers.action';
 
 
 const environmentServiceMock = { isTouch: () => false };
@@ -510,6 +510,7 @@ describe('OlMeasurementHandler', () => {
 
 			// create a measurement with overlays
 			const measurementLayer = classUnderTest.activate(map);
+			addLayer(MEASUREMENT_LAYER_ID, measurementLayer);
 			simulateDrawEvent('drawstart', classUnderTest._draw, feature);
 			feature.getGeometry().dispatchEvent('change');
 			geometry.setCoordinates([[[0, 0], [500, 0], [550, 550], [0, 500], [0, 0], [0, 0]]]);
@@ -523,7 +524,6 @@ describe('OlMeasurementHandler', () => {
 			expect(overlayElement).toBeTruthy();
 
 			// layers visibility changed
-			// measurementLayer.setVisible(false);
 			modifyLayer(MEASUREMENT_LAYER_ID, { visible: false });
 
 			expect(overlayElement.style.display).toBeDefined();
@@ -555,7 +555,6 @@ describe('OlMeasurementHandler', () => {
 			expect(overlayElement).toBeTruthy();
 
 			// layers opacity changed
-			// measurementLayer.setOpacity(0.3);
 			modifyLayer(MEASUREMENT_LAYER_ID, { opacity: 0.3 });
 
 			expect(overlayElement.style.opacity).toBeDefined();

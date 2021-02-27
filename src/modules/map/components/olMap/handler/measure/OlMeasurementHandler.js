@@ -53,38 +53,23 @@ export class OlMeasurementHandler extends OlLayerHandler {
 
 		};
 		const onChange = (changedState) => {
-			const measurementLayers = changedState.active.filter(l => l.id === MEASUREMENT_LAYER_ID)[0];
-			if (measurementLayers.length > 0) {
-				const measurementLayer = measurementLayers[0];
+			const measurementLayer = changedState.active.find(l => l.id === MEASUREMENT_LAYER_ID);
+			if (measurementLayer) {				
 				this._overlays.forEach(o => {
 					o.getElement().style.display = measurementLayer.visible ? '' : 'none';
 					o.getElement().style.opacity = measurementLayer.opacity;
 				});
 			}
-
 		};
 
 		this._unsubscribeFromStore = observe(this._storeService.getStore(), extract, onChange);
-
-		// const visibleChangedHandler = (event) => {
-		// 	const layer = event.target;
-		// 	const isVisibleStyle = layer.getVisible() ? '' : 'none';
-		// 	this._overlays.forEach(o => o.getElement().style.display = isVisibleStyle);
-		// };
-
-		// const opacityChangedHandler = (event) => {
-		// 	const layer = event.target;
-		// 	this._overlays.forEach(o => o.getElement().style.opacity = layer.getOpacity());
-		// };
 
 		const prepareInteraction = () => {
 			const source = new VectorSource({ wrapX: false });
 			const layer = new VectorLayer({
 				source: source,
 				style: measureStyleFunction
-			});
-			// this._layerVisibilityListener = layer.on('change:visible', visibleChangedHandler);
-			// this._layerOpacityListener = layer.on('change:opacity', opacityChangedHandler);
+			});			
 			return layer;
 		};
 
